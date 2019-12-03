@@ -69,27 +69,3 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 
-.gitignore
-.idea/.gitignore
-.idea/DDPG-TORCS-Advance.iml
-.idea/inspectionProfiles/
-.idea/misc.xml
-.idea/modules.xml
-.idea/vcs.xml
-ActorNetwork.py
-CriticNetwork.py
-OU.py
-ReplayBuffer.py
-actormodel.h5
-actormodel.json
-autostart.sh
-criticmodel.h5
-criticmodel.json
-ddpg.py
-example_experiment.py
-fast.gif
-gym_torcs.py
-practice.xml
-sample_agent.py
-snakeoil3_gym.py
-vtorcs-RL-color/
