@@ -13,7 +13,7 @@ import time
 class TorcsEnv:
     terminal_judge_start = 100  # If after 100 timestep still no progress, terminated
     termination_limit_progress = 5  # [km/h], episode terminates if car is running slower than this limit
-    default_speed = 50
+    default_speed = 80
 
     initial_reset = True
 
@@ -24,7 +24,7 @@ class TorcsEnv:
 
         self.initial_run = True
 
-        ##print("launch torcs")
+        # print("launch torcs")
         os.system('pkill torcs')
         time.sleep(0.5)
         if self.vision is True:
@@ -60,7 +60,7 @@ class TorcsEnv:
             self.observation_space = spaces.Box(low=low, high=high)
 
     def step(self, u):
-       #print("Step")
+       # print("Step")
         # convert thisAction to the actual torcs actionstr
         client = self.client
 
@@ -72,7 +72,7 @@ class TorcsEnv:
         # Steering
         action_torcs['steer'] = this_action['steer']  # in [-1, 1]
 
-        #  Simple Autnmatic Throttle Control by Snakeoil
+        # Simple Autnmatic Throttle Control by Snakeoil
         if self.throttle is False:
             target_speed = self.default_speed
             if client.S.d['speedX'] < target_speed - (client.R.d['steer']*50):
@@ -94,11 +94,11 @@ class TorcsEnv:
             action_torcs['accel'] = this_action['accel']
             action_torcs['brake'] = this_action['brake']
 
-        #  Automatic Gear Change by Snakeoil
+        # Automatic Gear Change by Snakeoil
         if self.gear_change is True:
             action_torcs['gear'] = this_action['gear']
         else:
-            #  Automatic Gear Change by Snakeoil is possible
+            # Automatic Gear Change by Snakeoil is possible
             action_torcs['gear'] = 1
             if self.throttle:
                 if client.S.d['speedX'] > 50:
@@ -134,32 +134,35 @@ class TorcsEnv:
         damage = np.array(obs['damage'])
         rpm = np.array(obs['rpm'])
 
-        progress = sp*np.cos(obs['angle']) - np.abs(sp*np.sin(obs['angle'])) - sp * np.abs(obs['trackPos'])
+        progress = sp*np.cos(obs['angle']) - np.abs(sp*np.sin(obs['angle'])) - 10 * sp * np.abs(obs['trackPos'])
         reward = progress
 
         # collision detection
         if obs['damage'] - obs_pre['damage'] > 0:
-            reward = -1
+            reward = -10
 
         # Termination judgement #########################
         episode_terminate = False
-        #if (abs(track.any()) > 1 or abs(trackPos) > 1):  # Episode is terminated if the car is out of track
-        #    reward = -200
-        #    episode_terminate = True
-        #    client.R.d['meta'] = True
+        # Episode is terminated if the car is out of track 汽车的碰撞模型碰到赛道外壁
+        if abs(track.any()) > 1 or abs(trackPos) > 1:
+            if reward >= 0:
+                reward = -200  # TODO:遇到负数值的reward，避免造成反向效果
+            episode_terminate = True
+            client.R.d['meta'] = True
 
-        #if self.terminal_judge_start < self.time_step: # Episode terminates if the progress of agent is small
+        # if self.terminal_judge_start < self.time_step: # Episode terminates if the progress of agent is small
         #    if progress < self.termination_limit_progress:
         #        print("No progress")
         #        episode_terminate = True
         #        client.R.d['meta'] = True
 
-        if np.cos(obs['angle']) < 0: # Episode is terminated if the agent runs backward
+        # Episode is terminated if the agent runs backward当汽车倒退，结束训练
+        if np.cos(obs['angle']) < 0:
             episode_terminate = True
             client.R.d['meta'] = True
 
-
-        if client.R.d['meta'] is True: # Send a reset signal
+        # Send a reset signal发送重置信号
+        if client.R.d['meta'] is True:
             self.initial_run = False
             client.respond_to_server()
 
@@ -168,7 +171,7 @@ class TorcsEnv:
         return self.get_obs(), reward, client.R.d['meta'], {}
 
     def reset(self, relaunch=False):
-        #print("Reset")
+        # print("Reset")
 
         self.time_step = 0
 
@@ -176,7 +179,7 @@ class TorcsEnv:
             self.client.R.d['meta'] = True
             self.client.respond_to_server()
 
-            ## TENTATIVE. Restarting TORCS every episode suffers the memory leak bug!
+            # TENTATIVE. Restarting TORCS every episode suffers the memory leak bug!
             if relaunch is True:
                 self.reset_torcs()
                 print("### TORCS is RELAUNCHED ###")
@@ -203,7 +206,7 @@ class TorcsEnv:
         return self.observation
 
     def reset_torcs(self):
-       #print("relaunch torcs")
+       # print("relaunch torcs")
         os.system('pkill torcs')
         time.sleep(0.5)
         if self.vision is True:

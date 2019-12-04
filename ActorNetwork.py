@@ -1,3 +1,10 @@
+"""
+代码中使用了2个隐藏层，分别有300和600个神经元。输出包括3个连续动作。
+（1）转向Steering：使用tanh激活函数（输出-1表示最大右转弯，+1表示最大左转弯）；
+（2）加速Acceleration：使用sigmoid激活函数（输出0代表不加速，1表示全加速）；
+（3）刹车Brake：使用sigmoid激活函数（输出0表示不制动，1表示紧急制动）。
+代码使用Keras函数Merge来合并三个输出层（在keras2.2.0的版本中Merge已经取消，使用merge函数替代）。
+"""
 import numpy as np
 import math
 from keras.initializations import normal, identity
@@ -12,6 +19,7 @@ import keras.backend as K
 HIDDEN1_UNITS = 300
 HIDDEN2_UNITS = 600
 
+
 class ActorNetwork(object):
     def __init__(self, sess, state_size, action_size, BATCH_SIZE, TAU, LEARNING_RATE):
         self.sess = sess
@@ -21,10 +29,10 @@ class ActorNetwork(object):
 
         K.set_session(sess)
 
-        #Now create the model
-        self.model , self.weights, self.state = self.create_actor_network(state_size, action_size)   
-        self.target_model, self.target_weights, self.target_state = self.create_actor_network(state_size, action_size) 
-        self.action_gradient = tf.placeholder(tf.float32,[None, action_size])
+        # Now create the model
+        self.model, self.weights, self.state = self.create_actor_network(state_size, action_size)
+        self.target_model, self.target_weights, self.target_state = self.create_actor_network(state_size, action_size)
+        self.action_gradient = tf.placeholder(tf.float32, [None, action_size])
         self.params_grad = tf.gradients(self.model.output, self.weights, -self.action_gradient)
         grads = zip(self.params_grad, self.weights)
         self.optimize = tf.train.AdamOptimizer(LEARNING_RATE).apply_gradients(grads)
@@ -39,19 +47,19 @@ class ActorNetwork(object):
     def target_train(self):
         actor_weights = self.model.get_weights()
         actor_target_weights = self.target_model.get_weights()
-        for i in xrange(len(actor_weights)):
-            actor_target_weights[i] = self.TAU * actor_weights[i] + (1 - self.TAU)* actor_target_weights[i]
+        for i in range(len(actor_weights)):
+            actor_target_weights[i] = self.TAU * actor_weights[i] + (1 - self.TAU) * actor_target_weights[i]
         self.target_model.set_weights(actor_target_weights)
 
-    def create_actor_network(self, state_size,action_dim):
+    def create_actor_network(self, state_size, action_dim):
         print("Now we build the model")
-        S = Input(shape=[state_size])   
+        S = Input(shape=[state_size])
         h0 = Dense(HIDDEN1_UNITS, activation='relu')(S)
         h1 = Dense(HIDDEN2_UNITS, activation='relu')(h0)
-        Steering = Dense(1,activation='tanh',init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)  
-        Acceleration = Dense(1,activation='sigmoid',init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)   
-        Brake = Dense(1,activation='sigmoid',init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1) 
-        V = merge([Steering,Acceleration,Brake],mode='concat')          
-        model = Model(input=S,output=V)
+        Steering = Dense(1, activation='tanh', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+        Acceleration = Dense(1, activation='sigmoid', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+        Brake = Dense(1, activation='sigmoid', init=lambda shape, name: normal(shape, scale=1e-4, name=name))(h1)
+        V = merge([Steering, Acceleration, Brake], mode='concat')
+        model = Model(input=S, output=V)
         return model, model.trainable_weights, S
 
